@@ -47,6 +47,7 @@ def main():
     
     gripper_demo = GripperDemo(pos)
     # gripper_demo.surface_gripper.close()
+    gripper_demo.surface_gripper.open()
 
     i = 0
     reset_needed = False
@@ -77,7 +78,6 @@ def main():
             curr_ref += step * 3.1415 / 180
             
             # actions = ArticulationAction(
-            #     joint_positions=curr_ref
             # )
             
             # IK
@@ -88,9 +88,10 @@ def main():
             #     gripper_demo.surface_gripper.close()
             #     print("CLOSED")
             # gripper_demo.surface_gripper.close()
+            actions = None
             
             if PICK_PHASE == 0:
-                print(f"Entering phase {PICK_PHASE}...")
+                # print(f"Entering phase {PICK_PHASE}...")
                 # target_position, target_orientation = task._cube.get_world_pose()
                 # target_position, target_orientation = gripper_demo.boxGeom.get_world_pose()
                 # get prim's pos
@@ -104,19 +105,33 @@ def main():
                 target_position = pos
                 
                 # rot = np.array([0.7071, 0.7071, 0, 0])
-                rot = np.array([0, -1, 0, 0])
-                target_position[-1] = 0.35
-                action, success = aik.compute_inverse_kinematics(target_position, rot)
+                rot = np.array([0., -0.707, 0., -0.707])
                 
-                # print(success)
-                # print(action)
-                actions = action
+                # target for cone
+                # rot = np.array([0, -1, 0, 0])
+                # target_position[-1] = 0.55
+                # action, success = aik.compute_inverse_kinematics(target_position, rot)
+                # actions = action
+                
+                
+                
+                if i < 50:
+                    # teleport
+                    tjp = [ 0.4212939, -1.5068517, -1.3259246,  2.8326983, -1.1495025,  1.5707899]
+                    task._robot.set_joint_positions(np.array(tjp))
+                else:
+                    # target for mesh
+                    rot = np.array([0., -0.707, 0., -0.707])
+                    target_position[-1] = 0.55
+                    action, success = aik.compute_inverse_kinematics(target_position, rot)
+                    actions = action
+
                 if i >= 250:
                     PICK_PHASE += 1
             elif PICK_PHASE == 1:
                 print(f"Entering phase {PICK_PHASE}...")
                 # gripper_demo.surface_gripper.close()
-                if target_position[-1] >= 0.3:
+                if target_position[-1] >= 0.52:
                     target_position[-1] -= 0.0005
                 action, success = aik.compute_inverse_kinematics(target_position, rot)
                 actions = action
@@ -129,8 +144,9 @@ def main():
                     PICK_PHASE += 1
             elif PICK_PHASE == 3:
                 print(f"Entering phase {PICK_PHASE}...")
+                print("CLOSING GRIPPER")
                 gripper_demo.surface_gripper.close()  # should close only here!
-                if target_position[-1] < 0.45:
+                if target_position[-1] < 0.55:
                     target_position[-1] += 0.0005
                 else:
                     PICK_PHASE += 1
@@ -142,10 +158,10 @@ def main():
                 if k > 100:
                     PICK_PHASE += 1
             else:
+                print("Opening gripper...")
                 gripper_demo.surface_gripper.open()
             
             # actions from controller
-            curr_joint_positions = observations[task_params["robot_name"]["value"]]["joint_positions"]
             # joint_indices = [4, 9, 11, 13, 15, 17, 19, 21, 23]  # with lift joint
             # joint_indices = [8, 10, 12, 14, 16, 18, 20, 22]
             # curr_joint_positions = np.array([curr_joint_positions[i] for i in joint_indices])
@@ -169,8 +185,8 @@ def main():
             # else:
                 # articulation_controller.apply_action(actions)
             
-            
-            articulation_controller.apply_action(actions)
+            if actions is not None:
+                articulation_controller.apply_action(actions)
             
             i += 1
     simulation_app.close()
